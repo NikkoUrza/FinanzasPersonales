@@ -61,14 +61,14 @@ export const FinanzasProvider = ({ children }) => {
       acreedor: 'Davivienda',
       esAmortizable: true,
       montoOriginal: 17220042,
-      monto: 17220042,
+      monto: 15442459.96,
       cuotaMensual: 452203,
-      cuotasTotales: 60,
-      cuotasPagadas: 0,
+      cuotasTotales: 70,
+      cuotasPagadas: 9,
       diaPago: 10,
       fecha: '2025-09-14',
       fechaVencimiento: '2030-09-10',
-      ultimoPagoRegistrado: '2026-05', // Cuota de Junio 10 ya venció, se procesará automático
+      ultimoPagoRegistrado: '2026-06', // Ya pagó la cuota de Junio (9 cuotas pagadas en total)
       pagado: false
     }
 
