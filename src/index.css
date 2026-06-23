@@ -447,6 +447,11 @@ h2 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 30px;
+  width: 100%;
+}
+
+.dashboard-grid > * {
+  min-width: 0;
 }
 
 @media (min-width: 900px) {
@@ -490,6 +495,10 @@ h2 {
 /* Safe areas support and mobile layouts */
 @media (max-width: 767px) {
   /* Layout modifications */
+  .navbar-content {
+    padding: 0 12px;
+  }
+
   .container {
     padding: 16px 12px 24px 12px;
   }
