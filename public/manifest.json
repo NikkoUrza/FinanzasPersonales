@@ -1,0 +1,19 @@
+{
+  "short_name": "Mis Finanzas",
+  "name": "Mis Finanzas Personales",
+  "description": "Aplicación premium de control de finanzas y deudas personales",
+  "icons": [
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b0b0d",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#0b0b0d",
+  "orientation": "portrait"
+}

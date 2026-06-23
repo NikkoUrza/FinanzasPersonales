@@ -46,7 +46,7 @@ export const FinanzasProvider = ({ children }) => {
       esAmortizable: true,
       montoOriginal: 15000000,
       monto: 15000000,
-      cuotaMensual: 465079.79,
+      cuotaMensual: 492079.79, // Aumentado en $27,000 (0.18% del valor asegurado de $15,000,000 por seguro de vida)
       cuotasTotales: 48,
       cuotasPagadas: 0,
       diaPago: 5,
@@ -93,10 +93,22 @@ export const FinanzasProvider = ({ children }) => {
     setEgresos(savedEgresos ? JSON.parse(savedEgresos) : [])
     
     const parsedDeudas = savedDeudas ? JSON.parse(savedDeudas) : []
-    if (parsedDeudas.length === 0) {
+    let localChanged = false
+    const migratedDeudas = parsedDeudas.map(d => {
+      if (d.acreedor === 'Lulo Bank' && parseFloat(d.cuotaMensual) === 465079.79) {
+        d.cuotaMensual = 492079.79
+        localChanged = true
+      }
+      return d
+    })
+
+    if (migratedDeudas.length === 0) {
       precargarDeudasPreestablecidas(null)
     } else {
-      setDeudas(parsedDeudas)
+      setDeudas(migratedDeudas)
+      if (localChanged) {
+        localStorage.setItem('deudas', JSON.stringify(migratedDeudas))
+      }
     }
   }
 
@@ -147,7 +159,19 @@ export const FinanzasProvider = ({ children }) => {
       if (items.length === 0) {
         precargarDeudasPreestablecidas(user.uid)
       } else {
-        setDeudas(items)
+        let hasMigration = false
+        const migratedItems = items.map(d => {
+          if (d.acreedor === 'Lulo Bank' && parseFloat(d.cuotaMensual) === 465079.79) {
+            hasMigration = true
+            const updatedVal = 492079.79
+            const { id: _, ...dataToSave } = { ...d, cuotaMensual: updatedVal }
+            updateDoc(doc(db, 'users', user.uid, 'deudas', d.id), dataToSave)
+              .catch(err => console.error("Error migrating Lulo credit in Firestore:", err))
+            return { ...d, cuotaMensual: updatedVal }
+          }
+          return d
+        })
+        setDeudas(hasMigration ? migratedItems : items)
       }
       setLoading(false)
     }, (err) => {
