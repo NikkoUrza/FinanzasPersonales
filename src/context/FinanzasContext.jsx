@@ -38,6 +38,51 @@ export const FinanzasProvider = ({ children }) => {
     'Otros Gastos'
   ]
 
+  // --- PRECARGA DE CRÉDITOS PREDETERMINADOS (Davivienda y Lulo Bank) ---
+  const precargarDeudasPreestablecidas = async (uid) => {
+    const lulo = {
+      descripcion: 'Crédito de Consumo Lulo',
+      acreedor: 'Lulo Bank',
+      esAmortizable: true,
+      montoOriginal: 15000000,
+      monto: 15000000,
+      cuotaMensual: 465079.79,
+      cuotasTotales: 48,
+      cuotasPagadas: 0,
+      diaPago: 5,
+      fecha: '2026-06-13',
+      fechaVencimiento: '2030-06-05',
+      ultimoPagoRegistrado: '2026-06', // Siguiente cuota en Julio 2026
+      pagado: false
+    }
+
+    const davivienda = {
+      descripcion: 'Crédito Davivienda',
+      acreedor: 'Davivienda',
+      esAmortizable: true,
+      montoOriginal: 17220042,
+      monto: 17220042,
+      cuotaMensual: 452203,
+      cuotasTotales: 60,
+      cuotasPagadas: 0,
+      diaPago: 10,
+      fecha: '2025-09-14',
+      fechaVencimiento: '2030-09-10',
+      ultimoPagoRegistrado: '2026-05', // Cuota de Junio 10 ya venció, se procesará automático
+      pagado: false
+    }
+
+    if (hasFirebaseConfig && uid) {
+      await addDoc(collection(db, 'users', uid, 'deudas'), lulo)
+      await addDoc(collection(db, 'users', uid, 'deudas'), davivienda)
+    } else {
+      setDeudas([
+        { id: 'lulo-mock', ...lulo },
+        { id: 'davivienda-mock', ...davivienda }
+      ])
+    }
+  }
+
   // --- MODO LOCAL (Fallback si Firebase no está configurado) ---
   const loadLocalData = () => {
     const savedIngresos = localStorage.getItem('ingresos')
@@ -46,13 +91,18 @@ export const FinanzasProvider = ({ children }) => {
     
     setIngresos(savedIngresos ? JSON.parse(savedIngresos) : [])
     setEgresos(savedEgresos ? JSON.parse(savedEgresos) : [])
-    setDeudas(savedDeudas ? JSON.parse(savedDeudas) : [])
+    
+    const parsedDeudas = savedDeudas ? JSON.parse(savedDeudas) : []
+    if (parsedDeudas.length === 0) {
+      precargarDeudasPreestablecidas(null)
+    } else {
+      setDeudas(parsedDeudas)
+    }
   }
 
-  // --- ESCUCHA DE AUTENTICACIÓN Y SINCRONIZACIÓN ---
+  // --- ESCUCHA DE AUTENTICACIÓN ---
   useEffect(() => {
     if (!hasFirebaseConfig) {
-      // Si no hay Firebase, cargar datos de localStorage y apagar loading
       loadLocalData()
       setLoading(false)
       return
@@ -62,7 +112,6 @@ export const FinanzasProvider = ({ children }) => {
       setUser(currentUser)
       
       if (!currentUser) {
-        // Si no hay sesión, limpiar estados y apagar loading
         setIngresos([])
         setEgresos([])
         setDeudas([])
@@ -79,7 +128,6 @@ export const FinanzasProvider = ({ children }) => {
 
     setLoading(true)
 
-    // Consultas ordenadas por fecha (o más reciente primero)
     const qIngresos = query(collection(db, 'users', user.uid, 'ingresos'), orderBy('fecha', 'desc'))
     const qEgresos = query(collection(db, 'users', user.uid, 'egresos'), orderBy('fecha', 'desc'))
     const qDeudas = query(collection(db, 'users', user.uid, 'deudas'), orderBy('fecha', 'desc'))
@@ -87,19 +135,23 @@ export const FinanzasProvider = ({ children }) => {
     const unsubIngresos = onSnapshot(qIngresos, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setIngresos(items)
-    }, (err) => console.error("Error en Snapshot de Ingresos:", err))
+    })
 
     const unsubEgresos = onSnapshot(qEgresos, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setEgresos(items)
-    }, (err) => console.error("Error en Snapshot de Egresos:", err))
+    })
 
     const unsubDeudas = onSnapshot(qDeudas, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setDeudas(items)
-      setLoading(false) // Desactivar carga una vez que las deudas (el último snap) respondan
+      if (items.length === 0) {
+        precargarDeudasPreestablecidas(user.uid)
+      } else {
+        setDeudas(items)
+      }
+      setLoading(false)
     }, (err) => {
-      console.error("Error en Snapshot de Deudas:", err)
+      console.error(err)
       setLoading(false)
     })
 
@@ -110,7 +162,70 @@ export const FinanzasProvider = ({ children }) => {
     }
   }, [user])
 
-  // --- EFECTO PARA PERSISTENCIA LOCAL (Solo si Firebase NO está configurado) ---
+  // --- SCHEDULER: REGISTRO DE CUOTAS AUTOMÁTICAS ---
+  useEffect(() => {
+    if (loading) return
+
+    const registrarPagoAutomatico = async () => {
+      for (const d of deudas) {
+        if (d.esAmortizable && !d.pagado && d.ultimoPagoRegistrado) {
+          let [year, month] = d.ultimoPagoRegistrado.split('-').map(Number)
+          
+          let nextMonth = month + 1
+          let nextYear = year
+          if (nextMonth > 12) {
+            nextMonth = 1
+            nextYear += 1
+          }
+
+          const nextMonthStr = nextMonth.toString().padStart(2, '0')
+          const nextPagoStr = `${nextYear}-${nextMonthStr}`
+          const nextPagoDate = new Date(`${nextPagoStr}-${d.diaPago.toString().padStart(2, '0')}T12:00:00`)
+          const hoy = new Date()
+
+          if (hoy >= nextPagoDate) {
+            console.log(`[Scheduler] Procesando cuota automática para ${d.acreedor} (${nextPagoStr})`)
+            
+            const nuevaCuotaPagada = d.cuotasPagadas + 1
+            const esUltima = nuevaCuotaPagada >= d.cuotasTotales
+
+            // 1. Agregar Egreso
+            const nuevoEgreso = {
+              descripcion: `Cuota ${nuevaCuotaPagada}/${d.cuotasTotales} - ${d.acreedor}`,
+              monto: parseFloat(d.cuotaMensual),
+              categoria: 'Otros Gastos',
+              tipo: 'Fijo',
+              fecha: `${nextPagoStr}-${d.diaPago.toString().padStart(2, '0')}`
+            }
+
+            // 2. Actualizar Deuda
+            const updatedDeuda = {
+              ...d,
+              cuotasPagadas: nuevaCuotaPagada,
+              monto: Math.max(parseFloat(d.monto) - parseFloat(d.cuotaMensual), 0),
+              ultimoPagoRegistrado: nextPagoStr,
+              pagado: esUltima
+            }
+
+            const { id: _, ...dataToSave } = updatedDeuda
+
+            if (hasFirebaseConfig && user) {
+              await addDoc(collection(db, 'users', user.uid, 'egresos'), nuevoEgreso)
+              await updateDoc(doc(db, 'users', user.uid, 'deudas', d.id), dataToSave)
+            } else {
+              setEgresos(prev => [{ id: Date.now(), ...nuevoEgreso }, ...prev])
+              setDeudas(prev => prev.map(item => item.id === d.id ? updatedDeuda : item))
+            }
+            break // Detener iteración para procesar una por una en ciclos de render secuenciales
+          }
+        }
+      }
+    }
+
+    registrarPagoAutomatico()
+  }, [deudas, loading, user])
+
+  // --- EFECTO PARA PERSISTENCIA LOCAL (Solo modo fallback) ---
   useEffect(() => {
     if (hasFirebaseConfig) return
     localStorage.setItem('ingresos', JSON.stringify(ingresos))
@@ -132,11 +247,9 @@ export const FinanzasProvider = ({ children }) => {
       ...ingreso,
       fecha: ingreso.fecha || new Date().toISOString().split('T')[0]
     }
-
     if (hasFirebaseConfig && user) {
       await addDoc(collection(db, 'users', user.uid, 'ingresos'), nuevoIngreso)
     } else {
-      // Modo local
       setIngresos(prev => [{ id: Date.now(), ...nuevoIngreso }, ...prev])
     }
   }
@@ -145,7 +258,6 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await deleteDoc(doc(db, 'users', user.uid, 'ingresos', id))
     } else {
-      // Modo local
       setIngresos(prev => prev.filter(i => i.id !== id))
     }
   }
@@ -154,7 +266,6 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await updateDoc(doc(db, 'users', user.uid, 'ingresos', id), updatedData)
     } else {
-      // Modo local
       setIngresos(prev => prev.map(i => i.id === id ? { ...i, ...updatedData } : i))
     }
   }
@@ -165,11 +276,9 @@ export const FinanzasProvider = ({ children }) => {
       ...egreso,
       fecha: egreso.fecha || new Date().toISOString().split('T')[0]
     }
-
     if (hasFirebaseConfig && user) {
       await addDoc(collection(db, 'users', user.uid, 'egresos'), nuevoEgreso)
     } else {
-      // Modo local
       setEgresos(prev => [{ id: Date.now(), ...nuevoEgreso }, ...prev])
     }
   }
@@ -178,7 +287,6 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await deleteDoc(doc(db, 'users', user.uid, 'egresos', id))
     } else {
-      // Modo local
       setEgresos(prev => prev.filter(e => e.id !== id))
     }
   }
@@ -187,7 +295,6 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await updateDoc(doc(db, 'users', user.uid, 'egresos', id), updatedData)
     } else {
-      // Modo local
       setEgresos(prev => prev.map(e => e.id === id ? { ...e, ...updatedData } : e))
     }
   }
@@ -196,6 +303,13 @@ export const FinanzasProvider = ({ children }) => {
   const addDeuda = async (deuda) => {
     const nuevaDeuda = {
       ...deuda,
+      esAmortizable: !!deuda.esAmortizable,
+      montoOriginal: parseFloat(deuda.montoOriginal || deuda.monto || 0),
+      cuotaMensual: parseFloat(deuda.cuotaMensual || 0),
+      cuotasTotales: parseInt(deuda.cuotasTotales || 0),
+      cuotasPagadas: parseInt(deuda.cuotasPagadas || 0),
+      diaPago: parseInt(deuda.diaPago || 1),
+      ultimoPagoRegistrado: deuda.ultimoPagoRegistrado || new Date().toISOString().split('T')[0].substring(0, 7),
       fecha: deuda.fecha || new Date().toISOString().split('T')[0],
       pagado: false
     }
@@ -203,7 +317,6 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await addDoc(collection(db, 'users', user.uid, 'deudas'), nuevaDeuda)
     } else {
-      // Modo local
       setDeudas(prev => [{ id: Date.now(), ...nuevaDeuda }, ...prev])
     }
   }
@@ -212,8 +325,27 @@ export const FinanzasProvider = ({ children }) => {
     if (hasFirebaseConfig && user) {
       await deleteDoc(doc(db, 'users', user.uid, 'deudas', id))
     } else {
-      // Modo local
       setDeudas(prev => prev.filter(d => d.id !== id))
+    }
+  }
+
+  const updateDeuda = async (id, updatedData) => {
+    const cleanedData = {
+      ...updatedData,
+      monto: parseFloat(updatedData.monto || 0),
+      montoOriginal: parseFloat(updatedData.montoOriginal || updatedData.monto || 0),
+      cuotaMensual: parseFloat(updatedData.cuotaMensual || 0),
+      cuotasTotales: parseInt(updatedData.cuotasTotales || 0),
+      cuotasPagadas: parseInt(updatedData.cuotasPagadas || 0),
+      diaPago: parseInt(updatedData.diaPago || 1),
+      ultimoPagoRegistrado: updatedData.ultimoPagoRegistrado || new Date().toISOString().split('T')[0].substring(0, 7)
+    }
+
+    if (hasFirebaseConfig && user) {
+      const { id: _, ...dataToSave } = cleanedData
+      await updateDoc(doc(db, 'users', user.uid, 'deudas', id), dataToSave)
+    } else {
+      setDeudas(prev => prev.map(d => d.id === id ? { ...d, ...cleanedData } : d))
     }
   }
 
@@ -226,19 +358,64 @@ export const FinanzasProvider = ({ children }) => {
         pagado: !currentDeuda.pagado
       })
     } else {
-      // Modo local
       setDeudas(prev => prev.map(d => d.id === id ? { ...d, pagado: !d.pagado } : d))
     }
   }
 
-  // --- OPERACIONES: AUTENTICACIÓN ---
+  // --- REGISTRO MANUAL DE CUOTA ---
+  const registrarPagoManual = async (id) => {
+    const d = deudas.find(item => item.id === id)
+    if (!d) return
+
+    let [year, month] = d.ultimoPagoRegistrado.split('-').map(Number)
+    let nextMonth = month + 1
+    let nextYear = year
+    if (nextMonth > 12) {
+      nextMonth = 1
+      nextYear += 1
+    }
+
+    const nextMonthStr = nextMonth.toString().padStart(2, '0')
+    const nextPagoStr = `${nextYear}-${nextMonthStr}`
+
+    const nuevaCuotaPagada = d.cuotasPagadas + 1
+    const esUltima = nuevaCuotaPagada >= d.cuotasTotales
+
+    // 1. Agregar Egreso
+    const nuevoEgreso = {
+      descripcion: `Cuota ${nuevaCuotaPagada}/${d.cuotasTotales} - ${d.acreedor} (Manual)`,
+      monto: parseFloat(d.cuotaMensual),
+      categoria: 'Otros Gastos',
+      tipo: 'Fijo',
+      fecha: new Date().toISOString().split('T')[0]
+    }
+
+    // 2. Modificar la Deuda
+    const updatedDeuda = {
+      ...d,
+      cuotasPagadas: nuevaCuotaPagada,
+      monto: Math.max(parseFloat(d.monto) - parseFloat(d.cuotaMensual), 0),
+      ultimoPagoRegistrado: nextPagoStr,
+      pagado: esUltima
+    }
+
+    const { id: _, ...dataToSave } = updatedDeuda
+
+    if (hasFirebaseConfig && user) {
+      await addDoc(collection(db, 'users', user.uid, 'egresos'), nuevoEgreso)
+      await updateDoc(doc(db, 'users', user.uid, 'deudas', id), dataToSave)
+    } else {
+      setEgresos(prev => [{ id: Date.now(), ...nuevoEgreso }, ...prev])
+      setDeudas(prev => prev.map(item => item.id === id ? updatedDeuda : item))
+    }
+  }
+
   const logout = async () => {
     if (hasFirebaseConfig) {
       await signOut(auth)
     }
   }
 
-  // --- VALORES CALCULADOS ---
   const totalIngresos = ingresos.reduce((sum, i) => sum + parseFloat(i.monto || 0), 0)
   const totalEgresos = egresos.reduce((sum, e) => sum + parseFloat(e.monto || 0), 0)
   const balance = totalIngresos - totalEgresos
@@ -270,7 +447,9 @@ export const FinanzasProvider = ({ children }) => {
     updateEgreso,
     addDeuda,
     deleteDeuda,
+    updateDeuda,
     markDeudaPagada,
+    registrarPagoManual,
     totalIngresos,
     totalEgresos,
     balance,
