@@ -10,6 +10,7 @@ function Dashboard() {
     totalDeudas, 
     ingresos, 
     egresos, 
+    deudas,
     formatPesos 
   } = useFinanzas()
 
@@ -80,44 +81,119 @@ function Dashboard() {
       </div>
 
       <div className="dashboard-grid">
-        {/* Panel de Distribución / Salud Financiera */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <h2>Salud Financiera</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px' }}>
-              Relación entre tus egresos totales y tus ingresos totales en este periodo.
-            </p>
-            
-            <div style={{ marginBottom: '25px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Porcentaje de Egreso</span>
-                <span style={{ fontWeight: '600', color: porcentajeGastos > 80 ? 'var(--accent-danger)' : 'var(--text-primary)' }}>
-                  {porcentajeGastos}%
-                </span>
+        {/* Columna Izquierda: Distribución e Hitos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          {/* Panel de Distribución / Salud Financiera */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: 0 }}>
+            <div>
+              <h2>Salud Financiera</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px' }}>
+                Relación entre tus egresos totales y tus ingresos totales en este periodo.
+              </p>
+              
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Porcentaje de Egreso</span>
+                  <span style={{ fontWeight: '600', color: porcentajeGastos > 80 ? 'var(--accent-danger)' : 'var(--text-primary)' }}>
+                    {porcentajeGastos}%
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', backgroundColor: '#202025', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div 
+                    style={{ 
+                      width: `${porcentajeGastos}%`, 
+                      height: '100%', 
+                      backgroundColor: porcentajeGastos > 80 ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                      borderRadius: '4px',
+                      transition: 'width 0.5s ease-in-out'
+                    }} 
+                  />
+                </div>
               </div>
-              <div style={{ width: '100%', height: '8px', backgroundColor: '#202025', borderRadius: '4px', overflow: 'hidden' }}>
-                <div 
-                  style={{ 
-                    width: `${porcentajeGastos}%`, 
-                    height: '100%', 
-                    backgroundColor: porcentajeGastos > 80 ? 'var(--accent-danger)' : 'var(--accent-primary)',
-                    borderRadius: '4px',
-                    transition: 'width 0.5s ease-in-out'
-                  }} 
-                />
-              </div>
+            </div>
+
+            <div style={{ padding: '15px', borderRadius: '8px', backgroundColor: '#16161a', border: '1px solid var(--border-color)', fontSize: '13px' }}>
+              {porcentajeGastos === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Registra ingresos y egresos para ver tu diagnóstico.</p>
+              ) : porcentajeGastos < 50 ? (
+                <p style={{ color: 'var(--accent-success-text)' }}>🟢 ¡Excelente! Estás ahorrando más del 50% de tus ingresos.</p>
+              ) : porcentajeGastos <= 80 ? (
+                <p style={{ color: 'var(--text-primary)' }}>🟡 Tus gastos están controlados, pero intenta reducir egresos hormiga.</p>
+              ) : (
+                <p style={{ color: 'var(--accent-danger-text)' }}>🔴 Cuidado: Estás gastando más del 80% de lo que ingresas.</p>
+              )}
             </div>
           </div>
 
-          <div style={{ padding: '15px', borderRadius: '8px', backgroundColor: '#16161a', border: '1px solid var(--border-color)', fontSize: '13px' }}>
-            {porcentajeGastos === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Registra ingresos y egresos para ver tu diagnóstico.</p>
-            ) : porcentajeGastos < 50 ? (
-              <p style={{ color: 'var(--accent-success-text)' }}>🟢 ¡Excelente! Estás ahorrando más del 50% de tus ingresos.</p>
-            ) : porcentajeGastos <= 80 ? (
-              <p style={{ color: 'var(--text-primary)' }}>🟡 Tus gastos están controlados, pero intenta reducir egresos hormiga.</p>
+          {/* Panel de Próximos Vencimientos */}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <h2 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CreditCard size={18} style={{ color: 'var(--accent-warning-text)' }} />
+              Próximos Vencimientos
+            </h2>
+            {!deudas || deudas.filter(d => d.esAmortizable && !d.pagado).length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>
+                No hay cuotas de créditos pendientes.
+              </p>
             ) : (
-              <p style={{ color: 'var(--accent-danger-text)' }}>🔴 Cuidado: Estás gastando más del 80% de lo que ingresas.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {deudas.filter(d => d.esAmortizable && !d.pagado).map(d => {
+                  const formatProximoPago = (ultimoPago, diaPago) => {
+                    if (!ultimoPago) return 'N/A'
+                    const [y, m] = ultimoPago.split('-').map(Number)
+                    let nextMonth = m + 1
+                    let nextYear = y
+                    if (nextMonth > 12) {
+                      nextMonth = 1
+                      nextYear += 1
+                    }
+                    const meses = [
+                      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                    ]
+                    return `${diaPago} de ${meses[nextMonth - 1]}`
+                  }
+
+                  return (
+                    <div key={d.id} style={{ 
+                      padding: '12px', 
+                      backgroundColor: 'rgba(255,255,255,0.01)', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <span style={{ fontWeight: '600', fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>
+                            {d.acreedor}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--accent-warning-text)', fontWeight: '500' }}>
+                            Cuota {d.cuotasPagadas + 1} de {d.cuotasTotales}
+                          </span>
+                        </div>
+                        <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>
+                          {formatPesos(d.cuotaMensual)}
+                        </span>
+                      </div>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        fontSize: '11px', 
+                        color: 'var(--text-secondary)',
+                        borderTop: '1px solid rgba(255,255,255,0.02)',
+                        paddingTop: '6px'
+                      }}>
+                        <span>Paga el:</span>
+                        <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                          {formatProximoPago(d.ultimoPagoRegistrado, d.diaPago)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>
