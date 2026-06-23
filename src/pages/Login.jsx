@@ -39,7 +39,7 @@ function Login() {
       }
     } catch (err) {
       console.error(err)
-      let cleanMessage = 'Ocurrió un error al procesar la solicitud.'
+      let cleanMessage = ''
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         cleanMessage = 'Correo o contraseña incorrectos.'
       } else if (err.code === 'auth/email-already-in-use') {
@@ -48,6 +48,10 @@ function Login() {
         cleanMessage = 'La contraseña debe tener al menos 6 caracteres.'
       } else if (err.code === 'auth/invalid-email') {
         cleanMessage = 'El correo electrónico no es válido.'
+      } else if (err.code === 'auth/operation-not-allowed') {
+        cleanMessage = 'El método de inicio de sesión con Correo y Contraseña está deshabilitado en tu consola de Firebase. Debes habilitarlo en Authentication > Sign-in method.'
+      } else {
+        cleanMessage = `Error de Firebase: ${err.message} (${err.code})`
       }
       setError(cleanMessage)
     } finally {
