@@ -474,3 +474,142 @@ h2 {
 .empty-state p {
   font-size: 14px;
 }
+
+/* Nav Links Wrapper Default */
+.nav-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Bottom Navigation Bar for Mobile */
+.bottom-nav {
+  display: none;
+}
+
+/* Safe areas support and mobile layouts */
+@media (max-width: 767px) {
+  /* Layout modifications */
+  .container {
+    padding: 16px 12px 24px 12px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  /* Hide top navigation links on mobile */
+  .navbar-content .nav-links {
+    display: none !important;
+  }
+
+  /* Prevent zoom on focus for iOS Safari */
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px !important;
+  }
+
+  /* Compact button styling on mobile */
+  .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* Table styling */
+  .table th,
+  .table td {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  /* Top Navbar changes */
+  .navbar {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: 12px;
+  }
+
+  .nav-action-text {
+    display: none !important;
+  }
+
+  .nav-action-btn, .nav-action-badge {
+    padding: 6px !important;
+    width: 34px;
+    height: 34px;
+    justify-content: center;
+    border-radius: 50% !important;
+  }
+
+  .nav-action-badge svg {
+    margin-right: 0 !important;
+  }
+
+  /* App container adjustments for bottom navigation */
+  .app {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  /* Bottom Navigation Styles */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(56px + env(safe-area-inset-bottom));
+    background-color: rgba(18, 18, 21, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-color);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 500;
+    gap: 3px;
+    width: 25%;
+    height: 100%;
+    transition: var(--transition-fast);
+  }
+
+  .bottom-nav-item svg {
+    color: var(--text-secondary);
+    transition: var(--transition-fast);
+  }
+
+  .bottom-nav-item:active {
+    opacity: 0.7;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--accent-primary);
+  }
+
+  .bottom-nav-item.active svg {
+    color: var(--accent-primary);
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+

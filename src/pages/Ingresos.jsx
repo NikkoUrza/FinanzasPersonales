@@ -189,7 +189,7 @@ function Ingresos() {
                     <th>Fecha</th>
                     <th>Descripción</th>
                     <th>Categoría</th>
-                    <th>Tipo</th>
+                    <th className="hide-mobile">Tipo</th>
                     <th>Monto</th>
                     <th style={{ textAlign: 'right' }}>Acciones</th>
                   </tr>
@@ -202,7 +202,7 @@ function Ingresos() {
                       <td>
                         <span className="badge badge-ingreso">{ingreso.categoria}</span>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{ingreso.tipo}</td>
+                      <td className="hide-mobile" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{ingreso.tipo}</td>
                       <td className="amount-positive" style={{ fontWeight: '600' }}>
                         {formatPesos(ingreso.monto)}
                       </td>

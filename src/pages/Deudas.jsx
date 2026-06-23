@@ -490,7 +490,7 @@ function Deudas() {
                         <th>Descripción</th>
                         <th>Acreedor</th>
                         <th>Monto</th>
-                        <th>Vencimiento</th>
+                        <th className="hide-mobile">Vencimiento</th>
                         <th style={{ textAlign: 'right' }}>Acciones</th>
                       </tr>
                     </thead>
@@ -509,7 +509,7 @@ function Deudas() {
                           <td className={deuda.pagado ? '' : 'amount-negative'} style={{ fontWeight: '600' }}>
                             {formatPesos(deuda.monto)}
                           </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          <td className="hide-mobile" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                             {deuda.fechaVencimiento || 'N/A'}
                           </td>
                           <td>

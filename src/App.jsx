@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink, Link } from 'react-router-dom'
-import { Coins, LogOut, ShieldAlert } from 'lucide-react'
+import { Coins, LogOut, ShieldAlert, LayoutDashboard, ArrowUpCircle, ArrowDownCircle, CreditCard } from 'lucide-react'
 import { useFinanzas } from './context/FinanzasContext'
 import Dashboard from './pages/Dashboard'
 import Ingresos from './pages/Ingresos'
@@ -53,20 +53,22 @@ function App() {
             <Coins size={22} style={{ color: 'var(--accent-primary)' }} /> 
             <span>Mis Finanzas</span>
           </Link>
-          <div className="nav-links" style={{ display: 'flex', alignItems: 'center' }}>
+          
+          <div className="nav-links">
             <NavLink to="/" end>Dashboard</NavLink>
             <NavLink to="/ingresos">Ingresos</NavLink>
             <NavLink to="/egresos">Egresos</NavLink>
             <NavLink to="/deudas">Deudas</NavLink>
-            
+          </div>
+
+          <div className="nav-actions">
             {user ? (
               <button 
                 onClick={logout} 
-                className="btn btn-secondary"
+                className="btn btn-secondary nav-action-btn"
                 style={{ 
                   padding: '6px 12px', 
                   fontSize: '13px', 
-                  marginLeft: '8px',
                   height: '34px',
                   display: 'flex',
                   alignItems: 'center',
@@ -75,29 +77,48 @@ function App() {
                 title="Cerrar sesión"
               >
                 <LogOut size={14} />
-                <span>Salir</span>
+                <span className="nav-action-text">Salir</span>
               </button>
             ) : !hasFirebaseConfig ? (
-              <span style={{ 
+              <span className="nav-action-badge" style={{ 
                 fontSize: '11px', 
                 color: 'var(--accent-warning-text)', 
                 backgroundColor: 'var(--accent-warning-bg)', 
                 border: '1px solid var(--accent-warning-border)',
                 padding: '5px 10px', 
                 borderRadius: '6px',
-                marginLeft: '8px',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
                 height: '34px',
                 fontWeight: '500'
               }} title="Firebase no configurado. Cambios guardados en este navegador.">
-                <ShieldAlert size={13} /> Modo Local
+                <ShieldAlert size={13} /> <span className="nav-action-text">Modo Local</span>
               </span>
             ) : null}
           </div>
         </div>
       </nav>
+
+      {/* Bottom Navigation for Mobile Devices */}
+      <div className="bottom-nav">
+        <NavLink to="/" className="bottom-nav-item" end>
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+        </NavLink>
+        <NavLink to="/ingresos" className="bottom-nav-item">
+          <ArrowUpCircle size={20} />
+          <span>Ingresos</span>
+        </NavLink>
+        <NavLink to="/egresos" className="bottom-nav-item">
+          <ArrowDownCircle size={20} />
+          <span>Egresos</span>
+        </NavLink>
+        <NavLink to="/deudas" className="bottom-nav-item">
+          <CreditCard size={20} />
+          <span>Deudas</span>
+        </NavLink>
+      </div>
       
       <div className="container">
         <Routes>
