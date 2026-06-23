@@ -1,5 +1,5 @@
 import { useFinanzas } from '../context/FinanzasContext'
-import { ArrowUpRight, ArrowDownRight, Wallet, AlertCircle, ArrowRight } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Wallet, AlertCircle, ArrowRight, CreditCard } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function Dashboard() {
